@@ -19,7 +19,7 @@ func main() {
 		printHelp()
 		os.Exit(1)
 	}
-	config.LoadFromArgs(os.Args[2:])
+	config.LoadConfigFromArgs(os.Args[2:])
 
 	passportService := services.NewPassportService()
 

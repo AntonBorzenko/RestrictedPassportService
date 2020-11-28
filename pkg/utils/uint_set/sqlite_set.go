@@ -3,8 +3,13 @@ package uint_set
 import (
 	"database/sql"
 	"fmt"
+	"github.com/AntonBorzenko/RestrictedPassportService/config"
+	"github.com/AntonBorzenko/RestrictedPassportService/utils"
 	e "github.com/AntonBorzenko/RestrictedPassportService/utils/errors"
 	_ "github.com/mattn/go-sqlite3"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type SqliteSet struct {
@@ -14,10 +19,12 @@ type SqliteSet struct {
 
 func NewSqliteSet(filename string, createDb bool, createIndex bool) *SqliteSet {
 	db, err := sql.Open("sqlite3", filename)
-	if err != nil {
-		panic(err)
-	}
+	e.Check(err)
+	e.CheckDbResult(db.Exec("PRAGMA journal_mode=off"))
+	e.CheckDbResult(db.Exec("PRAGMA page_size=65536"))
+
 	set := SqliteSet{"NumbersSet", db}
+
 	if createDb {
 		set.CreateDB()
 	}
@@ -28,17 +35,35 @@ func NewSqliteSet(filename string, createDb bool, createIndex bool) *SqliteSet {
 }
 
 func (set *SqliteSet) InsertMultiple(numbers chan uint64, ignoreErrors bool) error {
-	// batchGenerator := utils.GetBatchGenerator(numbers, config.Cfg.DBBatchSize)
-	stmt, err := set.db.Prepare(fmt.Sprintf("INSERT OR IGNORE INTO `%v` VALUES (?)", set.tableName))
-	e.Check(err)
+	count := 0
+	step := 0
+	start := time.Now()
 
-	for number := range numbers {
-		_, err := stmt.Exec(number)
-		if !ignoreErrors {
+	for batch := range utils.GetBatchGenerator(numbers, config.Cfg.DBBatchSize) {
+		batchStrings := make([]string, len(batch))
+		for i, value := range batch {
+			batchStrings[i] = strconv.FormatUint(value, 10)
+		}
+		query :=
+			"INSERT OR IGNORE INTO `" + set.tableName +
+			"` VALUES (" + strings.Join(batchStrings, "),(") + ")"
+		_, err := set.db.Exec(query)
+		if !ignoreErrors && err != nil {
 			return err
 		}
-	}
 
+		if config.Cfg.DBUpdateVerbose && step % 50 == 0 {
+			tpr := float64(time.Now().Sub(start).Seconds()) / float64(count) * 1_000_000
+			fmt.Printf("\r%s", strings.Repeat(" ", 50))
+			fmt.Printf("\rInserted %v values, %.1fs per 1M insertions", count, tpr)
+		}
+
+		count += len(batch)
+		step += 1
+	}
+	if config.Cfg.DBUpdateVerbose {
+		fmt.Println()
+	}
 	return nil
 }
 

@@ -11,9 +11,10 @@ type Config struct {
 	SslKey string `yml:"ssl_key" env:"SSL_KEY" env-default:"" env-description:"Path to SSL Key file"`
 	SslCert string `yml:"ssl_cert" env:"SSL_CHAIN" env-default:"" env-description:"Path to SSL Cert file"`
 
-	DBFileUrl string `yml:"db_url" env:"DB_URL" env-default:"http://guvm.mvd.ru/upload/expired-passports/list_of_expired_passports.csv.bz2"`
-	DBFile string `yml:"db_file" env:"DB_FILE" env-default:"db.sqlite"`
-	DBBatchSize int `yml:"db_batch_size" env:"DB_BATCH_SIZE" env-default:"128" env-description:"Count of rows in one DB insert"`
+	DBFileUrl       string `yml:"db_url" env:"DB_URL" env-default:"http://guvm.mvd.ru/upload/expired-passports/list_of_expired_passports.csv.bz2"`
+	DBFile          string `yml:"db_file" env:"DB_FILE" env-default:"db.sqlite"`
+	DBBatchSize     int    `yml:"db_batch_size" env:"DB_BATCH_SIZE" env-default:"2048" env-description:"Count of rows in one DB insert"`
+	DBUpdateVerbose bool   `yml:"db_update_verbose" env:"DB_UPDATE_VERBOSE" env-default:"true"  env-description:"Verbose output on DB Update"`
 }
 
 var Cfg = Config{}
@@ -50,7 +51,7 @@ func getConfigName(args []string) string {
 	return ""
 }
 
-func LoadFromArgs(args []string) {
+func LoadConfigFromArgs(args []string) {
 	if configName := getConfigName(args); configName != "" {
 		LoadFromConfig(configName)
 	} else {

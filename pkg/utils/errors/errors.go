@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"database/sql"
 	"os"
 )
 
@@ -28,6 +29,11 @@ func CheckBool(result bool, err error) bool {
 }
 
 func CheckString(result string, err error) string {
+	Check(err)
+	return result
+}
+
+func CheckDbResult(result sql.Result, err error) sql.Result {
 	Check(err)
 	return result
 }

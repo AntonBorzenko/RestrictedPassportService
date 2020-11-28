@@ -2,6 +2,7 @@ package net
 
 import (
 	"fmt"
+	"github.com/AntonBorzenko/RestrictedPassportService/config"
 	"io"
 	"net/http"
 	"os"
@@ -24,6 +25,9 @@ func humanizeBytes(bytes uint64) string {
 }
 
 func (wc WriteCounter) PrintProgress() {
+	if !config.Cfg.DBUpdateVerbose {
+		return
+	}
 	// Clear the line by using a character return to go back to the start and remove
 	// the remaining characters by filling it with spaces
 	fmt.Printf("\r%s", strings.Repeat(" ", 35))
@@ -54,7 +58,9 @@ func DownloadFile(filename string, url string) (err error) {
 	}
 
 	// The progress use the same line so print a new line once it's finished downloading
-	fmt.Println()
+	if config.Cfg.DBUpdateVerbose {
+		fmt.Println()
+	}
 
 	return nil
 }
