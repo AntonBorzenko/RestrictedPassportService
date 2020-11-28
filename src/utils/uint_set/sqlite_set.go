@@ -67,16 +67,9 @@ func (set *SqliteSet) InsertMultiple(numbers chan uint64, ignoreErrors bool) err
 	return nil
 }
 
-func (set *SqliteSet) mustExec(query string) sql.Result {
-	result, err := set.db.Exec(query)
-	if err != nil {
-		panic(err)
-	}
-	return result
-}
-
 func (set *SqliteSet) CreateDB() {
-	set.mustExec(fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (NUMBER INTEGER NOT NULL)", set.tableName))
+	query := fmt.Sprintf("CREATE TABLE IF NOT EXISTS `%v` (NUMBER INTEGER NOT NULL)", set.tableName)
+	e.CheckDbResult(set.db.Exec(query))
 }
 
 func (set *SqliteSet) Close() error {
@@ -85,7 +78,7 @@ func (set *SqliteSet) Close() error {
 
 func (set *SqliteSet) CreateIndex() {
 	query := fmt.Sprintf("CREATE INDEX IF NOT EXISTS set_index ON `%v`(NUMBER)", set.tableName)
-	set.mustExec(query)
+	e.CheckDbResult(set.db.Exec(query))
 }
 
 func (set *SqliteSet) Has(number uint64) (bool, error) {

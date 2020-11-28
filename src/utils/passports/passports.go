@@ -58,10 +58,10 @@ func RemovePreviousFiles() error {
 	return nil
 }
 
-func GetPassportsGenerator(tempFileName string, batchSize int) chan uint64 {
+func GetPassportsGenerator(bzipFileName string, batchSize int) chan uint64 {
 	result := make(chan uint64, batchSize)
 
-	stringChan, err := utils.StringChannelFromBzip(tempFileName)
+	stringChan, err := utils.StringChannelFromBzip(bzipFileName)
 	e.Check(err)
 
 	go func () {

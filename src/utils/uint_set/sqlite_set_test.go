@@ -2,7 +2,7 @@ package uint_set
 
 import (
 	"fmt"
-	"io/ioutil"
+	"github.com/AntonBorzenko/RestrictedPassportService/utils"
 	"os"
 	"testing"
 
@@ -11,11 +11,10 @@ import (
 )
 
 func TestSqliteSet_Has_Insert(t *testing.T) {
-	tempFile := e.CheckFile(ioutil.TempFile("", "db_*.sqlite"))
-	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
+	tempFileName := e.CheckString(utils.CreateTempFile("db_*.sqlite"))
+	defer os.Remove(tempFileName)
 
-	set := NewSqliteSet(tempFile.Name(), true, true)
+	set := NewSqliteSet(tempFileName, true, true)
 	defer set.Close()
 
 	var (
@@ -24,7 +23,7 @@ func TestSqliteSet_Has_Insert(t *testing.T) {
 	)
 
 	e.Check(set.Insert(testPassportNumber))
-	query := fmt.Sprintf("SELECT * FROM %v WHERE NUMBER=`%v`", set.tableName, testPassportNumber)
+	query := fmt.Sprintf("SELECT * FROM `%v` WHERE NUMBER='%v' LIMIT 1", set.tableName, testPassportNumber)
 	row := set.db.QueryRow(query)
 	e.Check(row.Scan(&foundNumber))
 	if foundNumber != testPassportNumber {
@@ -36,9 +35,7 @@ func TestSqliteSet_Has_Insert(t *testing.T) {
 		testPassportNumber3 uint64 = 5678_345678
 	)
 
-	result, err := set.Has(testPassportNumber3)
-	e.Check(err)
-	if result {
+	if e.CheckBool(set.Has(testPassportNumber3)) {
 		t.Errorf("Unexpected number %v in set", testPassportNumber3)
 	}
 
@@ -46,31 +43,26 @@ func TestSqliteSet_Has_Insert(t *testing.T) {
 		set.Insert(testPassportNumber2),
 		set.Insert(testPassportNumber3))
 	for _, value := range []uint64{testPassportNumber, testPassportNumber2, testPassportNumber3} {
-		result, err = set.Has(value)
-		e.Check(err)
-		if !result {
+		if !e.CheckBool(set.Has(value)) {
 			t.Errorf("Set does not have number %v", value)
 		}
 	}
 }
 
 func TestSqliteSet_CreateDB_CreateIndex(t *testing.T) {
-	tempFile, err := ioutil.TempFile("dir", "db_*.sqlite")
-	e.Check(err)
-	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
+	tempFileName := e.CheckString(utils.CreateTempFile("db_*.sqlite"))
+	defer os.Remove(tempFileName)
 
-	set := NewSqliteSet(tempFile.Name(), false, false)
+	set := NewSqliteSet(tempFileName, false, false)
 	defer set.Close()
 
-	_, err = set.db.Exec(fmt.Sprintf("SELECT * FROM %v LIMIT 2", set.tableName))
+	_, err := set.db.Exec(fmt.Sprintf("SELECT * FROM %v LIMIT 2", set.tableName))
 	if err == nil {
 		t.Errorf("Table %v is exists", set.tableName)
 	}
 
 	set.CreateDB()
-	_, err = set.db.Exec(fmt.Sprintf("SELECT * FROM %v LIMIT 2", set.tableName))
-	e.Check(err)
+	e.CheckDbResult(set.db.Exec(fmt.Sprintf("SELECT * FROM %v LIMIT 2", set.tableName)))
 
 	countFoundIndexes := func() int {
 		var foundRows int
@@ -78,6 +70,7 @@ func TestSqliteSet_CreateDB_CreateIndex(t *testing.T) {
 		e.Check(row.Scan(&foundRows))
 		return foundRows
 	}
+
 	if countFoundIndexes() != 0 {
 		t.Errorf("Index with name 'set_index' is found")
 	}
@@ -98,12 +91,10 @@ func sliceToChan(array []uint64) chan uint64 {
 }
 
 func TestSqliteSet_InsertMultiple(t *testing.T) {
-	tempFile, err := ioutil.TempFile("dir", "db_*.sqlite")
-	e.Check(err)
-	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
+	tempFileName := e.CheckString(utils.CreateTempFile("db_*.sqlite"))
+	defer os.Remove(tempFileName)
 
-	set := NewSqliteSet(tempFile.Name(), true, true)
+	set := NewSqliteSet(tempFileName, true, true)
 	defer set.Close()
 
 	insertableValues := []uint64{4, 5, 6, 1234_567890, 3456_234567, 9876_123456}

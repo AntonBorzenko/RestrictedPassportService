@@ -38,7 +38,7 @@ func CheckDbResult(result sql.Result, err error) sql.Result {
 	return result
 }
 
-func CheckAString(result []string, err error) []string {
+func CheckStringSlice(result []string, err error) []string {
 	Check(err)
 	return result
 }
