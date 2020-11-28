@@ -6,10 +6,12 @@ import (
 	"github.com/AntonBorzenko/RestrictedPassportService/config"
 	"github.com/AntonBorzenko/RestrictedPassportService/utils"
 	e "github.com/AntonBorzenko/RestrictedPassportService/utils/errors"
+	"github.com/AntonBorzenko/RestrictedPassportService/utils/net"
 	"github.com/AntonBorzenko/RestrictedPassportService/utils/passports"
 	"github.com/AntonBorzenko/RestrictedPassportService/utils/uint_set"
 	"log"
 	"net/http"
+	"os"
 )
 
 type PassportService struct {
@@ -60,20 +62,32 @@ func (service *PassportService) checkPassport(w http.ResponseWriter, r *http.Req
 }
 
 func (service *PassportService) StartApi() {
-	if !utils.FileExists(config.Cfg.DBFile) {
-		service.UpdateDb()
-	}
-	fmt.Printf("starting server at port %v\n", config.Cfg.Port)
-
-	serviceUriPrefix := "/passport-api"
+	serviceUriPrefix := "/passportApi"
 	http.HandleFunc(serviceUriPrefix, okResponse)
 	http.HandleFunc(serviceUriPrefix + "/check", service.checkPassport)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", config.Cfg.Port), nil))
+
+	if config.Cfg.SslKey != "" && config.Cfg.SslCert != "" {
+		log.Println("starting server at port 443")
+		e.Check(http.ListenAndServeTLS(":443", config.Cfg.SslCert, config.Cfg.SslKey, nil))
+	} else {
+		log.Printf("starting server at port %v\n", config.Cfg.Port)
+		e.Check(http.ListenAndServe(fmt.Sprintf(":%v", config.Cfg.Port), nil))
+	}
 }
 
 func (service *PassportService) UpdateDb() {
-	passportGenerator := passports.GetPassportsGenerator(config.Cfg.DBFileUrl, config.Cfg.DBBatchSize)
-	set := service.Set.(*uint_set.SqliteSet)
-	e.Check(set.InsertMultiple(passportGenerator, false))
-	set.CreateIndex()
+	e.Check(passports.RemovePreviousFiles())
+
+	tempFileName := e.CheckString(utils.CreateTempFile("passports_*.bz2"))
+	defer os.Remove(tempFileName)
+
+	log.Printf("Downloading file '%v' from url '%v'...\n", tempFileName, config.Cfg.DBFileUrl)
+	e.Check(net.DownloadFile(tempFileName, config.Cfg.DBFileUrl))
+
+	passportGenerator := passports.GetPassportsGenerator(tempFileName, config.Cfg.DBBatchSize)
+	e.Check(service.Set.InsertMultiple(passportGenerator, false))
+
+	if set, ok := service.Set.(*uint_set.SqliteSet); ok {
+		set.CreateIndex()
+	}
 }

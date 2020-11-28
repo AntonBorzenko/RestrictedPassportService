@@ -3,6 +3,7 @@ package uint_set
 import (
 	"database/sql"
 	"fmt"
+	e "github.com/AntonBorzenko/RestrictedPassportService/utils/errors"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -27,7 +28,18 @@ func NewSqliteSet(filename string, createDb bool, createIndex bool) *SqliteSet {
 }
 
 func (set *SqliteSet) InsertMultiple(numbers chan uint64, ignoreErrors bool) error {
-	return insertMultiple(set, numbers, ignoreErrors)
+	// batchGenerator := utils.GetBatchGenerator(numbers, config.Cfg.DBBatchSize)
+	stmt, err := set.db.Prepare(fmt.Sprintf("INSERT OR IGNORE INTO `%v` VALUES (?)", set.tableName))
+	e.Check(err)
+
+	for number := range numbers {
+		_, err := stmt.Exec(number)
+		if !ignoreErrors {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (set *SqliteSet) mustExec(query string) sql.Result {

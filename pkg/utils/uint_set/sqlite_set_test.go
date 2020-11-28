@@ -12,10 +12,11 @@ import (
 
 func TestSqliteSet_Has_Insert(t *testing.T) {
 	tempFile := e.CheckFile(ioutil.TempFile("", "db_*.sqlite"))
-	defer e.Check(tempFile.Close(), os.Remove(tempFile.Name()))
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
 
 	set := NewSqliteSet(tempFile.Name(), true, true)
-	defer e.Check(set.Close())
+	defer set.Close()
 
 	var (
 		testPassportNumber uint64 = 1234_123456
@@ -56,10 +57,11 @@ func TestSqliteSet_Has_Insert(t *testing.T) {
 func TestSqliteSet_CreateDB_CreateIndex(t *testing.T) {
 	tempFile, err := ioutil.TempFile("dir", "db_*.sqlite")
 	e.Check(err)
-	defer e.Check(tempFile.Close(), os.Remove(tempFile.Name()))
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
 
 	set := NewSqliteSet(tempFile.Name(), false, false)
-	defer e.Check(set.Close())
+	defer set.Close()
 
 	_, err = set.db.Exec(fmt.Sprintf("SELECT * FROM %v LIMIT 2", set.tableName))
 	if err == nil {
@@ -98,10 +100,11 @@ func sliceToChan(array []uint64) chan uint64 {
 func TestSqliteSet_InsertMultiple(t *testing.T) {
 	tempFile, err := ioutil.TempFile("dir", "db_*.sqlite")
 	e.Check(err)
-	defer e.Check(tempFile.Close(), os.Remove(tempFile.Name()))
+	defer os.Remove(tempFile.Name())
+	defer tempFile.Close()
 
 	set := NewSqliteSet(tempFile.Name(), true, true)
-	defer e.Check(set.Close())
+	defer set.Close()
 
 	insertableValues := []uint64{4, 5, 6, 1234_567890, 3456_234567, 9876_123456}
 	nonInsertableValues := []uint64{1, 2, 3, 5678_901234, 1234_123456}

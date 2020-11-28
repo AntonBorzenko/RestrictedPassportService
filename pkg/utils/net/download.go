@@ -2,7 +2,6 @@ package net
 
 import (
 	"fmt"
-	e "github.com/AntonBorzenko/RestrictedPassportService/utils/errors"
 	"io"
 	"net/http"
 	"os"
@@ -34,23 +33,28 @@ func (wc WriteCounter) PrintProgress() {
 	fmt.Printf("\rDownloading... %s complete", humanizeBytes(wc.Total))
 }
 
-func DownloadFile(out *os.File, url string) error {
+func DownloadFile(filename string, url string) (err error) {
+	out, err := os.Create(filename)
+	if err != nil {
+		return
+	}
+	defer out.Close()
+
 	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
-		return err
+		return
 	}
-	defer e.Check(resp.Body.Close())
+	defer resp.Body.Close()
 
 	// Create our progress reporter and pass it to be used alongside our writer
-	counter := &WriteCounter{}
-	if _, err = io.Copy(out, io.TeeReader(resp.Body, counter)); err != nil {
-		return err
+	counter := WriteCounter{}
+	if _, err = io.Copy(out, io.TeeReader(resp.Body, &counter)); err != nil {
+		return
 	}
 
 	// The progress use the same line so print a new line once it's finished downloading
 	fmt.Println()
-	e.Check(out.Close())
 
 	return nil
 }
